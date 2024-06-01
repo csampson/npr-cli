@@ -1,52 +1,23 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"time"
+	"fmt"
+	"os"
 
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/mp3"
-	"github.com/faiface/beep/speaker"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
-func fetchAudioURL(url string) string {
-	res, err := http.Head(url)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	contentType := res.Header.Get("Content-Type")
-
-	if contentType == "audio/mpeg" {
-		return url
-	} else {
-		panic("Unsupported media type")
-	}
-}
-
 func main() {
-	audioURL := fetchAudioURL("https://stream1.cprnetwork.org/cpr1_lo")
-
-	resp, err := http.Get(audioURL)
-	if err != nil {
-		log.Fatal(err)
+	station := Station{
+		title:     "CPR",
+		streamURL: "https://stream1.cprnetwork.org/cpr1_lo",
 	}
-	defer resp.Body.Close()
 
-	streamer, format, err := mp3.Decode(resp.Body)
-	if err != nil {
-		log.Fatal(err)
+	m := initialModel(station)
+	p := tea.NewProgram(m)
+
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
 	}
-	defer streamer.Close()
-
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
-
-	done := make(chan bool)
-	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-		done <- true
-	})))
-
-	<-done
 }
